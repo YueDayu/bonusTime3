@@ -12,11 +12,12 @@ var canvas,
   text = [[], [], []],
   nextText = [[], [], []],
   shape = {},
-  FPS = 30,
+  FPS = 60,
   type = ['circle', 'ovals', 'drop', 'ribbon'],
   currentNum = 0,//random number [0, 9]
-  currentLayout = 0, //decide the colors and the sharp
-  step = 0, //switch between when equals 0; and get 3 numbers when equals 1, 2, 3
+  currentLayout = 9, //decide the colors and the sharp
+  statusStep = 0, //switch between when equals 0; and get 3 numbers when equals 1, 2, 3
+  isShowPic = 0,
   word = ['码', '戏', '团'],
   colors = [
     ['#e67e22', '#2c3e50'],
@@ -42,11 +43,12 @@ function init() {
   var container = document.querySelector('.ip-slideshow');
   canvas = document.createElement('canvas');
   canvas.width = innerWidth;
-  canvas.height = 600;
+  canvas.height = 700;
   container.appendChild(canvas);
   context = canvas.getContext('2d');
   randomOrder();
   createParticles();
+  showPic();
 }
 
 /*
@@ -155,7 +157,7 @@ function loop() {
   clear();
   update();
   render();
-  requestAnimFrame(loop);
+  setTimeout(loop, 1000 / FPS);
 }
 
 /*
@@ -326,8 +328,8 @@ function updataTransition() {
   /* --- Text --- */
   for (var i = 0; i < 3; i++) {
     [].forEach.call(nextText[i], function (particle, index) {
-      text[i][index].x += ((particle.x + Math.cos(particle.angle + index) * particle.orbit) - text[i][index].x) * 0.08;
-      text[i][index].y += ((particle.y + Math.sin(particle.angle + index) * particle.orbit) - text[i][index].y) * 0.08;
+      text[i][index].x += ((particle.x + Math.cos(particle.angle + index) * particle.orbit) - text[i][index].x) * 0.1;
+      text[i][index].y += ((particle.y + Math.sin(particle.angle + index) * particle.orbit) - text[i][index].y) * 0.1;
       particle.angle += 0.08;
     });
     if (nextText[i].length < text[i].length) {
@@ -384,7 +386,7 @@ function render() {
     context.globalAlpha = particle.alpha;
     context.fillStyle = particle.color;
     context.beginPath();
-    context.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+    context.arc(particle.x, particle.y + 50, particle.radius, 0, Math.PI * 2);
     context.fill();
     context.restore();
   });
@@ -425,33 +427,68 @@ function randomOrder() {
 }
 
 /*
- * Request new frame.
+ * There's 4 situations in the process.
+ * 0 Main window shows the pic whose index is 10, 11, 12, 13. The word is "码戏团".Can go to situation 1.
+ * 1 Main window shows random numbers for few seconds. In the end, 1st word became the number. Can go to situation 2.
+ * 2 See above. Can go to situation 3.
+ * 3 See above. Back to situation 0.
+ * Use statusStep to control.
  */
-window.requestAnimFrame = (function () {
-  return window.requestAnimationFrame ||
-    window.webkitRequestAnimationFrame ||
-    window.mozRequestAnimationFrame ||
-    window.oRequestAnimationFrame ||
-    window.msRequestAnimationFrame ||
-    function (callback) {
-      window.setTimeout(callback, 1000 / FPS);
-    };
-})();
-window.onload = init;
 
+function showPic() {
+  if (statusStep == 0 || isShowPic == 1) {
+    //randomOrder();
+    currentLayout++;
+    if (currentLayout < 10) {
+      currentLayout = 10;
+    }
+    if (currentLayout >= 14) {
+      currentLayout = 10;
+    }
+    setTimeout(showPic, 2000);
+  }
+}
 
+function showNum(index, times) {
+  if (statusStep != 0 && isShowPic == 0) {
+    currentNum = (statusStep == 1) ? (randomBetween(0, maxHundredNum)) : (randomBetween(0, 9));
+    randomOrder();
+    currentLayout = currentNum;
+    console.log(index.toString() + " " + times.toString());
+    if (times >= 1) {
+      setTimeout(function() {
+        showNum(index, times - 1);
+      }, max(1000 - times * 100, 100));
+    } else {
+      setTimeout(function() {
+        changeWord(index, currentNum.toString(), 225);
+        isShowPic = 1;
+        showPic();
+      }, 1300);
+    }
+  }
+}
+
+function max(num1, num2) {
+  return (num1 > num2) ? num1 : num2;
+}
+
+function randomNum(index) {
+  isShowPic = 0;
+  showNum(index, 5);
+}
 
 function onClickBtn() {
-  randomOrder();
-  currentLayout++;
-  currentLayout %= 14;
+  statusStep = 1;
+  randomNum(0);
 }
 
 function onClickNumBtn() {
   changeWord(0, currentNum.toString(), 225);
-  changeWord(1, currentNum.toString(), 225);
-  changeWord(2, currentNum.toString(), 225);
+  //changeWord(1, currentNum.toString(), 225);
+  //changeWord(2, currentNum.toString(), 225);
   currentNum++;
   currentNum %= 10;
 }
 
+window.onload = init;
