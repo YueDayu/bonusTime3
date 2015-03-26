@@ -478,17 +478,23 @@ function randomNum(index) {
   showNum(index, 5);
 }
 
-function onClickBtn() {
-  statusStep = 1;
-  randomNum(0);
+function Start() {
+  statusStep++;
+  statusStep %= 4;
+  if (statusStep == 0) {
+    for (var i = 0; i < 3; i++) {
+      changeWord(i, word[i], 200);
+    }
+  } else {
+    randomNum(statusStep - 1);
+  }
 }
 
-function onClickNumBtn() {
-  changeWord(0, currentNum.toString(), 225);
-  //changeWord(1, currentNum.toString(), 225);
-  //changeWord(2, currentNum.toString(), 225);
-  currentNum++;
-  currentNum %= 10;
-}
+$("body").keydown(function(event){
+  console.log(event.which);
+  if (event.which == 32) {
+    Start ();
+  }
+});
 
 window.onload = init;
