@@ -4,21 +4,29 @@
 
 var self = window;
 
+var halfX = 450;
+var halfY = 250;
+var isTextOpen = 0;
+var textReOrder = [];
+var textSeed;
+var mainNum = 360;
+var randomNum = [1, 6, 8]; //random result --> 3 numbers.
+var partNum = mainNum / 3;
+var gap = 250;
+
 var canvas,
   context,
   particles = [],
   reOrder = [],
-  maxHundredNum = 7,
-  text = [[], [], []],
-  nextText = [[], [], []],
+  maxHundredNum = 6,
+  text = [],
+  nextText = [[], []], //two statuses for the text
   shape = {},
   FPS = 60,
   type = ['circle', 'ovals', 'drop', 'ribbon'],
-  currentNum = 0,//random number [0, 9]
-  currentLayout = 9, //decide the colors and the sharp
-  statusStep = 0, //switch between when equals 0; and get 3 numbers when equals 1, 2, 3
-  isShowPic = 0,
-  word = ['码', '戏', '团'],
+  currentLayout = 3, //decide the colors and the sharp
+  status = 0,
+  word = '码戏团',
   colors = [
     ['#e67e22', '#2c3e50'],
     ['#c0392b', '#ff7e15'],
@@ -33,6 +41,7 @@ var canvas,
     ['#e67e22', '#2c3e50'],
     ['#c0392b', '#ff7e15'],
     ['#1d75cf', '#3a5945'],
+    ['#c0392b', '#ff7e15'],
     ['#702744', '#f98d00']
   ];
 
@@ -46,16 +55,17 @@ function init() {
   canvas.height = 700;
   container.appendChild(canvas);
   context = canvas.getContext('2d');
-  randomOrder();
+  randomOrder(reOrder, mainNum);
   createParticles();
   showPic();
+  createText(word);
 }
 
 /*
  * Create particles
  */
 function createParticles() {
-  for (var quantity = 0, len = 200; quantity < len; quantity++) {
+  for (var quantity = 0, len = mainNum; quantity < len; quantity++) {
     var x, y, steps = Math.PI * 2 * quantity / len;
     x = canvas.width * 0.5 + 10 * Math.cos(steps);
     y = 180 + 10 * Math.sin(steps);
@@ -67,9 +77,9 @@ function createParticles() {
       y: y,
       hasBorn: hasBorn,
       ease: 0.04 + Math.random() * 0.06,
-      bornSpeed: 0.07 + Math.random() * 0.07,
+      bornSpeed: 0.03 + Math.random() * 0.10,
       alpha: 0,
-      maxAlpha: 0.7 + Math.random() * 0.4,
+      maxAlpha: 0.5 + Math.random() * 0.5,
       radius: radius,
       maxRadius: 12,
       color: color,
@@ -77,32 +87,20 @@ function createParticles() {
       steps: steps
     });
   }
-  for (var i = 0; i < 3; i++) {
-    updateText(i, word[i], 200);
-  }
   loop();
-}
-
-/*
- * Change word
- * @param index, word
- */
-function changeWord(index, str, fontPx) {
-  nextText[index] = [];
-  updateText(index, str, fontPx);
 }
 
 /*
  * Create text particles
  * @param index, seed
  */
-function createTextParticles(index, seed) {
+function createTextParticles(seed) {
   for (var quantity = 0, len = seed; quantity < len; quantity++) {
     var radius = randomBetween(0, 12);
     var hasBorn = !(radius > 0 || radius < 12);
     var color = "#FFFFFF";
-    text[index].push({
-      x: canvas.width * 0.5 + (index - 1) * 250,
+    text.push({
+      x: canvas.width * 0.5,
       y: canvas.height - 100,
       hasBorn: hasBorn,
       ease: 0.04 + Math.random() * 0.06,
@@ -117,26 +115,52 @@ function createTextParticles(index, seed) {
   }
 }
 
+function createTextFrame(seed) {
+  var x;
+  var y;
+  var heightNum = seed / 5.236;
+  var weightNum = heightNum * 1.618;
+  for (var i = 0, len = seed; i < len; i++) {
+    if (i < heightNum) {
+      x = canvas.width / 2 - halfX;
+      y = canvas.height / 2 - halfY + 2 * i * halfY / heightNum;
+    } else if (i < heightNum + weightNum) {
+      y = canvas.height / 2 + halfY;
+      x = canvas.width / 2 - halfX + 2 * (i - heightNum) * halfX / weightNum ;
+    } else if (i < 2 * heightNum + weightNum) {
+      x = canvas.width / 2 + halfX;
+      y = canvas.height / 2 - halfY + 2 * (i - heightNum - weightNum) * halfY / heightNum;
+    } else {
+      y = canvas.height / 2 - halfY;
+      x = canvas.width / 2 - halfX + 2 * (i - 2 * heightNum - weightNum) * halfX / weightNum ;
+    }
+    textReOrder.push(i);
+    nextText[1].push({
+      x: x,
+      y: y,
+      orbit: randomBetween(8, 13),
+      angle: 0
+    });
+  }
+}
+
 /*
  * Update the current text to a new one
  * @param index, str
- * index = 0, 1, 2  str is the word want to show
  */
-function updateText(index, str, fontPx) {
-  clearWord(index);
-  context.font = fontPx + 'px Lato, Arial, sans-serif';
+function createText(str) {
+  context.font = '200px Lato, Arial, sans-serif';
   context.fillStyle = 'rgb(255, 255, 255)';
   context.textAlign = 'center';
   var strip = str.toUpperCase().split('').join(String.fromCharCode(8202));
-  context.fillText(strip, canvas.width * 0.5 + (index - 1) * 250, canvas.height - 50);
-  var surface = context.getImageData(canvas.width * 0.5 + (index - 1) * 250 - 125, canvas.height - 250, 250, 250);
+  context.fillText(strip, canvas.width * 0.5, canvas.height - 50);
+  var surface = context.getImageData(0, canvas.height - 250, canvas.width, 250);
   for (var width = 0; width < surface.width; width += 8) {
     for (var height = 0; height < surface.height; height += 4) {
       var color = surface.data[(height * surface.width * 4) + (width * 4) - 1];
-      // The pixel color is white? So draw on it...
       if (color === 255) {
-        nextText[index].push({
-          x: width + canvas.width * 0.5 + (index - 1) * 250 - 125,
+        nextText[0].push({
+          x: width,
           y: height + canvas.height - 250,
           orbit: randomBetween(1, 3),
           angle: 0
@@ -144,10 +168,11 @@ function updateText(index, str, fontPx) {
       }
     }
   }
-  clearWord(index);
-  var seed = nextText[index].length;
-  // Recreate text particles, based on this seed
-  createTextParticles(index, seed);
+  clearWord();
+  var seed = nextText[0].length;
+  textSeed = seed;
+  createTextParticles(seed);
+  createTextFrame(seed);
 }
 
 /*
@@ -167,8 +192,8 @@ function clear() {
   context.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-function clearWord(index) {
-  context.clearRect(canvas.width * 0.5 + (index - 1) * 240 - 130, canvas.height - 250, 250, 250);
+function clearWord() {
+  context.clearRect(0, canvas.height - 250, canvas.width, 250);
 }
 
 /*
@@ -177,126 +202,138 @@ function clearWord(index) {
 function updataTransition() {
   [].forEach.call(particles, function (particle, index) {
     switch (currentLayout) {
-      case 0: //number 0
-        shape.x = canvas.width * 0.5 + 85 * Math.cos(particle.steps);
-        shape.y = 180 + 140 * Math.sin(particle.steps);
-        break;
-      case 1: //number 1
-        if (reOrder[index] < 100) {
-          shape.x = canvas.width * 0.5 + 1;
-          shape.y = 40 + 280 * (reOrder[index] / 100);
-        } else {
-          shape.x = canvas.width * 0.5 - 1;
-          shape.y = 320 - ((reOrder[index] - 100) / 100) * 280;
+      case 0: //show the numbers
+        var i = Math.floor(3 * index / mainNum);
+        var newIndex = (index - i * partNum);
+        switch (randomNum[i]) {
+          case 0: //number 0
+            var step = Math.PI * 2 * newIndex / partNum;
+            shape.x = canvas.width * 0.5 + 85 * Math.cos(step);
+            shape.y = canvas.height * 0.5 + 140 * Math.sin(step);
+            break;
+          case 1: //number 1
+            if (newIndex < (partNum / 2)) {
+              shape.x = canvas.width * 0.5 + 1;
+              shape.y = canvas.height / 2 - 140 + 280 * (newIndex / partNum);
+            } else {
+              shape.x = canvas.width * 0.5 - 1;
+              shape.y = canvas.height / 2 + 140 - ((newIndex  - (partNum / 2)) / partNum) * 280;
+            }
+            break;
+          case 2: //number 2
+            if (newIndex < partNum * (87 / 200)) {
+              var steps = Math.PI * 5 / 4 * newIndex / (partNum * (87 / 200));
+              shape.x = canvas.width * 0.5 - 85 * Math.cos(steps);
+              shape.y = canvas.height * 0.5 - 60 - 85 * Math.sin(steps);
+            } else if (newIndex < partNum * (156 / 200)) {
+              shape.x = canvas.width * 0.5 + 60 - 145 * (newIndex - partNum * (87 / 200)) / (partNum * (69 / 200));
+              shape.y = canvas.height * 0.5 - 5 + 147 * (newIndex - partNum * (87 / 200)) / (partNum * (69 / 200));
+            } else {
+              shape.x = canvas.width * 0.5 - 85 + 170 * (newIndex - partNum * (156 / 200)) / (partNum * (44 / 200));
+              shape.y = canvas.height * 0.5 + 140;
+            }
+            break;
+          case 3: //number 3
+            if (newIndex < (partNum * 93 / 200)) {
+              var steps = Math.PI * 5 / 4 * newIndex / (partNum * 93 / 200) - Math.PI / 4;
+              shape.x = canvas.width * 0.5 + 65 * Math.sin(steps);
+              shape.y = canvas.height * 0.5 - 70 - 65 * Math.cos(steps);
+            } else {
+              var steps = Math.PI * 5 / 4 * (newIndex - (partNum * 93 / 200)) / (partNum * 107 / 200);
+              shape.x = canvas.width * 0.5 + 75 * Math.sin(steps);
+              shape.y = canvas.height * 0.5 + 70 - 75 * Math.cos(steps);
+            }
+            break;
+          case 4: //number 4
+            if (newIndex < (partNum * 76 / 200)) {
+              shape.x = 50 + canvas.width * 0.5;
+              shape.y = 280 * newIndex / (partNum * 76 / 200) + canvas.height * 0.5 - 140;
+            } else if (newIndex < (partNum * 127 / 200)) {
+              shape.y = canvas.height * 0.5 + 43;
+              shape.x = canvas.width * 0.5 - 93 + 186 * (newIndex - (partNum * 76 / 200)) / (partNum * 51 / 200);
+            } else {
+              shape.x = canvas.width * 0.5 + 50 - 143 * (newIndex - (partNum * 127 / 200)) / (partNum * 73 / 200);
+              shape.y = canvas.height * 0.5 - 140 + 187 * (newIndex - (partNum * 127 / 200)) / (partNum * 73 / 200);
+            }
+            break;
+          case 5: //number 5
+            if (newIndex < (partNum * 46 / 200)) {
+              shape.y = canvas.height * 0.5 - 140;
+              shape.x = canvas.width * 0.5 - 75 + 150 * newIndex / (partNum * 46 / 200);
+            } else if (newIndex < (partNum * 86 / 200)) {
+              shape.x = canvas.width * 0.5 - 75;
+              shape.y = canvas.height * 0.5 - 140 + 100 * (newIndex - (partNum * 46 / 200)) / (partNum * 40 / 200);
+            } else if (newIndex < (partNum * 109 / 200)) {
+              shape.y = canvas.height * 0.5 - 40;
+              shape.x = canvas.width * 0.5 - 75 + 75 * (newIndex - (partNum * 86 / 200)) / (partNum * 23 / 200);
+            } else {
+              var steps = Math.PI * 19 / 14 * (newIndex - (partNum * 109 / 200)) / (partNum * 91 / 200);
+              shape.x = canvas.width * 0.5 + 90 * Math.sin(steps);
+              shape.y = canvas.height * 0.5 + 50 - 90 * Math.cos(steps);
+            }
+            break;
+          case 6: //number 6
+            if (newIndex < (partNum * 60 / 200)) {
+              var steps = Math.PI * newIndex / (partNum * 60 / 200);
+              shape.x = canvas.width * 0.5 + 85 * Math.cos(steps);
+              shape.y = canvas.height * 0.5 - 55 - 85 * Math.sin(steps);
+            } else if (newIndex < (partNum * 80 / 200)) {
+              shape.x = canvas.width * 0.5 - 85;
+              shape.y = canvas.height * 0.5 - 55 + 110 * (newIndex - (partNum * 60 / 200)) / (partNum * 20 / 200);
+            } else {
+              var steps = Math.PI * 2 * (newIndex - (partNum * 80 / 200)) / (partNum * 120 / 200);
+              shape.x = canvas.width * 0.5 + 85 * Math.sin(steps);
+              shape.y = canvas.height * 0.5 + 55 + 85 * Math.cos(steps);
+            }
+            break;
+          case 7: //number 7
+            if (newIndex < (partNum * 70 / 200)) {
+              shape.y = canvas.height * 0.5 - 140;
+              shape.x = canvas.width * 0.5 - 85 + 170 * newIndex / (partNum * 70 / 200);
+            } else {
+              shape.x = canvas.width * 0.5 + 85 - 100 * (newIndex - (partNum * 70 / 200)) / (partNum * 130 / 200);
+              shape.y = canvas.height * 0.5 - 140 + 280 * (newIndex - (partNum * 70 / 200)) / (partNum * 130 / 200);
+            }
+            break;
+          case 8: //number 8
+            if (newIndex < (partNum * 92 / 200)) {
+              var steps = Math.PI * 2 * newIndex / (partNum * 92 / 200);
+              shape.x = canvas.width * 0.5 + 65 * Math.sin(steps);
+              shape.y = canvas.height * 0.5 - 75 + 65 * Math.cos(steps);
+            } else {
+              var steps = Math.PI * 2 * (newIndex - (partNum * 92 / 200)) / (partNum * 108 / 200);
+              shape.x = canvas.width * 0.5 + 75 * Math.sin(steps);
+              shape.y = canvas.height * 0.5 + 65 + 75 * Math.cos(steps);
+            }
+            break;
+          case 9: //number 9
+            if (newIndex < (partNum * 60 / 200)) {
+              var steps = Math.PI * newIndex / (partNum * 60 / 200);
+              shape.x = canvas.width * 0.5 + 85 * Math.cos(steps);
+              shape.y = canvas.height * 0.5 + 55 + 85 * Math.sin(steps);
+            } else if (newIndex < (partNum * 80 / 200)) {
+              shape.x = canvas.width * 0.5 + 85;
+              shape.y = canvas.height * 0.5 + 55 - 110 * (newIndex - (partNum * 60 / 200)) / (partNum * 20 / 200);
+            } else {
+              var steps = Math.PI * 2 * (newIndex - (partNum * 80 / 200)) / (partNum * 120 / 200);
+              shape.x = canvas.width * 0.5 + 85 * Math.sin(steps);
+              shape.y = canvas.height * 0.5 - 55 + 85 * Math.cos(steps);
+            }
+            break;
         }
+        shape.x += (i - 1) * gap;
         break;
-      case 2: //number 2
-        if (reOrder[index] < 87) {
-          var steps = Math.PI * 5 / 4 * reOrder[index] / 87;
-          shape.x = canvas.width * 0.5 - 85 * Math.cos(steps);
-          shape.y = 113 - 85 * Math.sin(steps);
-        } else if (reOrder[index] < 156) {
-          shape.x = canvas.width * 0.5 + 60 - 145 * (reOrder[index] - 87) / 69;
-          shape.y = 173 + 147 * (reOrder[index] - 87) / 69;
-        } else {
-          shape.x = canvas.width * 0.5 - 85 + 170 * (reOrder[index] - 156) / 44;
-          shape.y = 320;
-        }
+      case 1: //ready for action
+        shape.x = canvas.width * 0.5 + 100 * (-Math.sin(reOrder[index]));
+        shape.y = canvas.height * 0.5 + 60 * (Math.sin(reOrder[index])) * Math.cos(reOrder[index]);
         break;
-      case 3: //number 3
-        if (reOrder[index] < 93) {
-          var steps = Math.PI * 5 / 4 * reOrder[index] / 93 - Math.PI / 4;
-          shape.x = canvas.width * 0.5 + 65 * Math.sin(steps);
-          shape.y = 105 - 65 * Math.cos(steps);
-        } else {
-          var steps = Math.PI * 5 / 4 * (reOrder[index] - 93) / 107;
-          shape.x = canvas.width * 0.5 + 75 * Math.sin(steps);
-          shape.y = 245 - 75 * Math.cos(steps);
-        }
-        break;
-      case 4: //number 4
-        if (reOrder[index] < 76) {
-          shape.x = 50 + canvas.width * 0.5;
-          shape.y = 280 * reOrder[index] / 76 + 40;
-        } else if (reOrder[index] < 127) {
-          shape.y = 227;
-          shape.x = canvas.width * 0.5 - 93 + 186 * (reOrder[index] - 76) / 51;
-        } else {
-          shape.x = canvas.width * 0.5 + 50 - 143 * (reOrder[index] - 127) / 73;
-          shape.y = 40 + 187 * (reOrder[index] - 127) / 73;
-        }
-        break;
-      case 5: //number 5
-        if (reOrder[index] < 46) {
-          shape.y = 40;
-          shape.x = canvas.width * 0.5 - 75 + 150 * reOrder[index] / 46;
-        } else if (reOrder[index] < 86) {
-          shape.x = canvas.width * 0.5 - 75;
-          shape.y = 40 + 100 * (reOrder[index] - 46) / 40;
-        } else if (reOrder[index] < 109) {
-          shape.y = 140;
-          shape.x = canvas.width * 0.5 - 75 + 75 * (reOrder[index] - 86) / 23;
-        } else {
-          var steps = Math.PI * 19 / 14 * (reOrder[index] - 109) / 91;
-          shape.x = canvas.width * 0.5 + 90 * Math.sin(steps);
-          shape.y = 230 - 90 * Math.cos(steps);
-        }
-        break;
-      case 6: //number 6
-        if (reOrder[index] < 60) {
-          var steps = Math.PI * reOrder[index] / 60;
-          shape.x = canvas.width * 0.5 + 85 * Math.cos(steps);
-          shape.y = 125 - 85 * Math.sin(steps);
-        } else if (reOrder[index] < 80) {
-          shape.x = canvas.width * 0.5 - 85;
-          shape.y = 125 + 110 * (reOrder[index] - 60) / 20;
-        } else {
-          var steps = Math.PI * 2 * (reOrder[index] - 80) / 120;
-          shape.x = canvas.width * 0.5 + 85 * Math.sin(steps);
-          shape.y = 235 + 85 * Math.cos(steps);
-        }
-        break;
-      case 7: //number 7
-        if (reOrder[index] < 70) {
-          shape.y = 40;
-          shape.x = canvas.width * 0.5 - 85 + 170 * reOrder[index] / 70;
-        } else {
-          shape.x = canvas.width * 0.5 + 85 - 100 * (reOrder[index] - 70) / 130;
-          shape.y = 40 + 280 * (reOrder[index] - 70) / 130;
-        }
-        break;
-      case 8: //number 8
-        if (reOrder[index] < 92) {
-          var steps = Math.PI * 2 * reOrder[index] / 92;
-          shape.x = canvas.width * 0.5 + 65 * Math.sin(steps);
-          shape.y = 105 + 65 * Math.cos(steps);
-        } else {
-          var steps = Math.PI * 2 * (reOrder[index] - 92) / 108;
-          shape.x = canvas.width * 0.5 + 75 * Math.sin(steps);
-          shape.y = 245 + 75 * Math.cos(steps);
-        }
-        break;
-      case 9: //number 9
-        if (reOrder[index] < 60) {
-          var steps = Math.PI * reOrder[index] / 60;
-          shape.x = canvas.width * 0.5 + 85 * Math.cos(steps);
-          shape.y = 235 + 85 * Math.sin(steps);
-        } else if (reOrder[index] < 80) {
-          shape.x = canvas.width * 0.5 + 85;
-          shape.y = 235 - 110 * (reOrder[index] - 60) / 20;
-        } else {
-          var steps = Math.PI * 2 * (reOrder[index] - 80) / 120;
-          shape.x = canvas.width * 0.5 + 85 * Math.sin(steps);
-          shape.y = 125 + 85 * Math.cos(steps);
-        }
-        break;
-      case 10: //circle
+      case 2: //circle
         shape.x = canvas.width * 0.5 + 140 * Math.sin(particle.steps);
         shape.y = 180 + 140 * Math.cos(particle.steps);
         break;
-      case 11: //ovals
+      case 3: //ovals
         var limit, steps;
-        limit = (particles.length * 0.5) - 1;
+        limit = (mainNum * 0.5) - 1;
         steps = Math.PI * 2 * reOrder[index] / limit;
         // First oval
         if (reOrder[index] < [].slice.call(particles, 0, limit).length) {
@@ -310,11 +347,11 @@ function updataTransition() {
           shape.y = 180 + 80 * Math.sin(steps);
         }
         break;
-      case 12: //drop
+      case 4: //drop
         shape.x = canvas.width * 0.5 + 90 * (1 - Math.sin(reOrder[index])) * Math.cos(reOrder[index]);
         shape.y = 320 + 140 * (-Math.sin(reOrder[index]) - 1);
         break;
-      case 13: //ribbon
+      case 5: //ribbon
         shape.x = canvas.width * 0.5 + 90 * (Math.sin(reOrder[index])) * Math.cos(reOrder[index]);
         shape.y = 320 + 140 * (-Math.sin(reOrder[index]) - 1);
         break;
@@ -326,19 +363,11 @@ function updataTransition() {
     particle.angle += 0.08;
   });
   /* --- Text --- */
-  for (var i = 0; i < 3; i++) {
-    [].forEach.call(nextText[i], function (particle, index) {
-      text[i][index].x += ((particle.x + Math.cos(particle.angle + index) * particle.orbit) - text[i][index].x) * 0.1;
-      text[i][index].y += ((particle.y + Math.sin(particle.angle + index) * particle.orbit) - text[i][index].y) * 0.1;
-      particle.angle += 0.08;
-    });
-    if (nextText[i].length < text[i].length) {
-      var extra = [].slice.call(text[i], nextText[i].length, text[i].length);
-      // Remove extra text particles
-      for (var index = 0; index < extra.length; index++)
-        text[i].splice(index, 1);
-    }
-  }
+  [].forEach.call(nextText[isTextOpen], function (particle, index) {
+    text[textReOrder[index]].x += ((particle.x + Math.cos(particle.angle + index) * particle.orbit) - text[textReOrder[index]].x) * 0.15;
+    text[textReOrder[index]].y += ((particle.y + Math.sin(particle.angle + index) * particle.orbit) - text[textReOrder[index]].y) * 0.15;
+    particle.angle += 0.08;
+  });
 }
 
 /*
@@ -351,7 +380,12 @@ function update() {
     if (particle.hasBorn) {
       particle.radius += (0 - particle.radius) * particle.bornSpeed;
       if (Math.round(particle.radius) === 0) {
-        particle.color = colors[currentLayout][Math.floor(Math.random() * colors[currentLayout].length)];
+        var i = Math.floor(3 * index / mainNum);
+        if (currentLayout == 0) {
+          particle.color = colors[randomNum[i]][Math.floor(Math.random() * colors[currentLayout].length)];
+        } else {
+          particle.color = colors[currentLayout + 9][Math.floor(Math.random() * colors[currentLayout].length)];
+        }
         particle.hasBorn = false;
       }
     } else {
@@ -360,21 +394,19 @@ function update() {
         particle.hasBorn = true;
     }
   });
-  for (var i = 0; i < 3; i++) {
-    [].forEach.call(text[i], function (particle, index) {
-      particle.alpha += (particle.maxAlpha - particle.alpha) * 0.05;
-      if (particle.hasBorn) {
-        particle.radius += (0 - particle.radius) * particle.bornSpeed;
-        if (Math.round(particle.radius) === 0)
-          particle.hasBorn = false;
-      }
-      if (!particle.hasBorn) {
-        particle.radius += (particle.maxRadius - particle.radius) * particle.bornSpeed;
-        if (Math.round(particle.radius) === particle.maxRadius)
-          particle.hasBorn = true;
-      }
-    });
-  }
+  [].forEach.call(text, function (particle, index) {
+    particle.alpha += (particle.maxAlpha - particle.alpha) * 0.05;
+    if (particle.hasBorn) {
+      particle.radius += (0 - particle.radius) * particle.bornSpeed;
+      if (Math.round(particle.radius) === 0)
+        particle.hasBorn = false;
+    }
+    if (!particle.hasBorn) {
+      particle.radius += (particle.maxRadius - particle.radius) * particle.bornSpeed;
+      if (Math.round(particle.radius) === particle.maxRadius)
+        particle.hasBorn = true;
+    }
+  });
 }
 
 /*
@@ -386,86 +418,35 @@ function render() {
     context.globalAlpha = particle.alpha;
     context.fillStyle = particle.color;
     context.beginPath();
-    context.arc(particle.x, particle.y + 50, particle.radius, 0, Math.PI * 2);
+    context.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
     context.fill();
     context.restore();
   });
-  for (var i = 0; i < 3; i++) {
-    [].forEach.call(text[i], function (particle, index) {
-      context.save();
-      context.globalAlpha = particle.alpha;
-      context.fillStyle = 'rgb(255, 255, 255)';
-      context.beginPath();
-      context.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
-      context.fill();
-      context.restore();
-    });
-  }
+  [].forEach.call(text, function (particle, index) {
+    context.save();
+    context.globalAlpha = particle.alpha;
+    context.fillStyle = 'rgb(255, 255, 255)';
+    context.beginPath();
+    context.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+    context.fill();
+    context.restore();
+  });
 }
 
-/*
- * Random a number between [min, max]
- */
 function randomBetween(min, max) {
   return Math.floor((Math.random() * (max - min + 1) + min));
 }
 
-/*
- * Random to get reOrder array
- */
-function randomOrder() {
+function randomOrder(array, n) {
   var index = 0;
-  for (var i = 0; i < 200; i++) {
-    reOrder[i] = i;
+  for (var i = 0; i < n; i++) {
+    array[i] = i;
   }
-  for (var i = 200; i > 0; i--) {
+  for (var i = n; i > 0; i--) {
     index = randomBetween(0, i);
-    var temp = reOrder[index];
-    reOrder[index] = reOrder[i - 1];
-    reOrder[i - 1] = temp;
-  }
-}
-
-/*
- * There's 4 situations in the process.
- * 0 Main window shows the pic whose index is 10, 11, 12, 13. The word is "码戏团".Can go to situation 1.
- * 1 Main window shows random numbers for few seconds. In the end, 1st word became the number. Can go to situation 2.
- * 2 See above. Can go to situation 3.
- * 3 See above. Back to situation 0.
- * Use statusStep to control.
- */
-
-function showPic() {
-  if (statusStep == 0 || isShowPic == 1) {
-    //randomOrder();
-    currentLayout++;
-    if (currentLayout < 10) {
-      currentLayout = 10;
-    }
-    if (currentLayout >= 14) {
-      currentLayout = 10;
-    }
-    setTimeout(showPic, 2000);
-  }
-}
-
-function showNum(index, times) {
-  if (statusStep != 0 && isShowPic == 0) {
-    currentNum = (statusStep == 1) ? (randomBetween(0, maxHundredNum)) : (randomBetween(0, 9));
-    randomOrder();
-    currentLayout = currentNum;
-    console.log(index.toString() + " " + times.toString());
-    if (times >= 1) {
-      setTimeout(function() {
-        showNum(index, times - 1);
-      }, max(1000 - times * 100, 100));
-    } else {
-      setTimeout(function() {
-        changeWord(index, currentNum.toString(), 225);
-        isShowPic = 1;
-        showPic();
-      }, 1300);
-    }
+    var temp = array[index];
+    array[index] = array[i - 1];
+    array[i - 1] = temp;
   }
 }
 
@@ -473,28 +454,39 @@ function max(num1, num2) {
   return (num1 > num2) ? num1 : num2;
 }
 
-function randomNum(index) {
-  isShowPic = 0;
-  showNum(index, 5);
-}
-
-function Start() {
-  statusStep++;
-  statusStep %= 4;
-  if (statusStep == 0) {
-    for (var i = 0; i < 3; i++) {
-      changeWord(i, word[i], 200);
-    }
-  } else {
-    randomNum(statusStep - 1);
-  }
-}
-
-$("body").keydown(function(event){
-  console.log(event.which);
-  if (event.which == 32) {
-    Start ();
-  }
-});
-
 window.onload = init;
+
+//function onclickB() {
+//  randomOrder(textReOrder, textSeed);
+//  isTextOpen = 1 - isTextOpen;
+//  currentLayout++;
+//  randomOrder(reOrder, mainNum);
+//  currentLayout %= 6;
+//  console.log(randomBetween(0, 6));
+//}
+
+function showPic() {
+  if (status == 0) {
+    currentLayout++;
+    randomOrder(reOrder, mainNum);
+    if (currentLayout < 2) {
+      currentLayout = 2;
+    }
+    if (currentLayout > 5) {
+      currentLayout = 2;
+    }
+    setTimeout(showPic, 2000);
+  }
+}
+
+function randomNumberArray() {
+  randomNum[0] = randomBetween(0, maxHundredNum);
+  randomNum[1] = randomBetween(0, 9);
+  if (randomNum[1] == randomNum[0]) {
+    randomNum[1] = randomBetween(0, 9);
+  }
+  randomNum[2] = randomBetween(0, 9);
+  if (randomNum[2] == randomNum[1]) {
+    randomNum[2] = randomBetween(0, 9);
+  }
+}
