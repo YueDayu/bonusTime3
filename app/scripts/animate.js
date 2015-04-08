@@ -10,9 +10,11 @@ var isTextOpen = 0;
 var textReOrder = [];
 var textSeed;
 var mainNum = 360;
-var randomNum = [1, 6, 8]; //random result --> 3 numbers.
+var randomNum = [0, 0, 0]; //random result --> 3 numbers.
 var partNum = mainNum / 3;
 var gap = 250;
+
+var showLoop;
 
 var canvas,
   context,
@@ -57,7 +59,7 @@ function init() {
   context = canvas.getContext('2d');
   randomOrder(reOrder, mainNum);
   createParticles();
-  showPic();
+  showLoop = setInterval("showPic()", 1800);
   createText(word);
 }
 
@@ -106,7 +108,7 @@ function createTextParticles(seed) {
       ease: 0.04 + Math.random() * 0.06,
       bornSpeed: 0.07 + Math.random() * 0.07,
       alpha: 0,
-      maxAlpha: 0.7 + Math.random() * 0.4,
+      maxAlpha: 0.4 + Math.random() * 0.7,
       radius: radius,
       maxRadius: 12,
       color: color,
@@ -138,7 +140,7 @@ function createTextFrame(seed) {
     nextText[1].push({
       x: x,
       y: y,
-      orbit: randomBetween(8, 13),
+      orbit: randomBetween(7, 13),
       angle: 0
     });
   }
@@ -456,15 +458,6 @@ function max(num1, num2) {
 
 window.onload = init;
 
-//function onclickB() {
-//  randomOrder(textReOrder, textSeed);
-//  isTextOpen = 1 - isTextOpen;
-//  currentLayout++;
-//  randomOrder(reOrder, mainNum);
-//  currentLayout %= 6;
-//  console.log(randomBetween(0, 6));
-//}
-
 function showPic() {
   if (status == 0) {
     currentLayout++;
@@ -475,7 +468,7 @@ function showPic() {
     if (currentLayout > 5) {
       currentLayout = 2;
     }
-    setTimeout(showPic, 2000);
+    //setTimeout(showPic, 1500);
   }
 }
 
@@ -490,3 +483,32 @@ function randomNumberArray() {
     randomNum[2] = randomBetween(0, 9);
   }
 }
+
+$("body").keydown(function(event){
+  console.log(event.which);
+  if (event.which == 32) {
+    if (status == 0) {
+      status++;
+      randomOrder(textReOrder, textSeed);
+      randomOrder(reOrder, mainNum);
+      isTextOpen = 1;
+      currentLayout = 1;
+      clearInterval(showLoop);
+    } else {
+      status = 0;
+      randomOrder(textReOrder, textSeed);
+      isTextOpen = 0;
+      showPic();
+      showLoop = setInterval("showPic()", 1800);
+    }
+  } else if (event.which == 13) {
+    if (status == 1) {
+      randomNumberArray();
+      currentLayout = 0;
+      status = 2;
+    } else if (status == 2) {
+      status = 1;
+      currentLayout = 1;
+    }
+  }
+});
