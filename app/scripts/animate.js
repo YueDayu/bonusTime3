@@ -463,12 +463,11 @@ function showPic() {
     currentLayout++;
     randomOrder(reOrder, mainNum);
     if (currentLayout < 2) {
-      currentLayout = 2;
+      currentLayout = 3;
     }
     if (currentLayout > 5) {
       currentLayout = 2;
     }
-    //setTimeout(showPic, 1500);
   }
 }
 
